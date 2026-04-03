@@ -1,0 +1,57 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.8in]{geometry}
+\usepackage{graphicx,booktabs,amsmath}
+\usepackage{enumitem}
+\setlist{itemsep=0.12em,parsep=0pt,topsep=0.2em}
+\usepackage[hidelinks]{hyperref}
+
+\title{Trader Performance and the Bitcoin Fear \& Greed Index:\\ Evidence from Hyperliquid Closes}
+\author{Internship selection --- take-home}
+\date{\today}
+
+\begin{document}
+\maketitle
+\vspace{-0.75em}
+
+\begin{abstract}
+\noindent
+We merge daily Crypto Fear \& Greed labels with $\sim$84.7k \emph{realized} Hyperliquid closes (2023-12-14---2025-05-01). Prior-day sentiment (\texttt{fg\_lag1}) limits same-day lookahead; errors are clustered by wallet. LightGBM still ranks sentiment among useful features, yet linear and permutation checks show sentiment is not the dominant driver once instrument, intraday seasonality, and size are included.
+\end{abstract}
+\vspace{-0.35em}
+
+\section*{Data and alignment}
+Hyperliquid fills include notional (\texttt{Size USD}), direction (open/close), and \texttt{Closed PnL}. We retain \textbf{close} rows only ($n{=}84{,}691$; $84{,}685$ after calendar join). Fear \& Greed supplies score and bucket labels. Trades are timestamped in IST; we align on the trade date and map \textbf{yesterday's} score and bucket so the signal predates the day's final reading. The closes sample begins mid-December 2023 in this extract.
+
+\section*{Methods}
+\textit{Descriptive:} median P\&L per close by lagged bucket + bootstrap bands; Spearman$(\texttt{fg\_lag1},\text{PnL})$.
+\textit{Regression:} $y=\operatorname{sign}(\text{PnL})\log(1{+}|\text{PnL}|)$ on \texttt{fg\_lag1}, $\log(1{+}\text{notional})$, long-close indicator, with an interaction term; covariance clustered by \texttt{Account}.
+\textit{Extremes:} Mann--Whitney tests on long vs short closes inside \textsc{Extreme Fear} / \textsc{Extreme Greed}.
+\textit{ML:} LightGBM on $\mathbb{1}\{\text{PnL}{>}0\}$ using \texttt{fg\_lag1}, same-day score, hour, weekday, $\log$ notional, long flag, label-encoded coin; \textbf{last 20\% of dates} as holdout with early stopping (AUC).
+\textit{Null:} 40 permutations shuffling daily \texttt{fg\_lag1} across dates, comparing $R^{2}$ with the real alignment.
+\textit{Archetypes:} 2-component Gaussian mixture on per-wallet mean close P\&L on ``fearish'' vs ``greedish'' lag days (29 wallets with both poles).
+
+\section*{Results}
+Correlation: Spearman $\approx -0.033$ (weak negative). Clustered OLS: slope on \texttt{fg\_lag1} negligible ($p{\approx}0.87$); \texttt{fg\_lag1}$\times$long $p{\approx}0.19$. Permutation: observed $R^{2}{\approx}0.347$ near permuted mean $0.348$ ($p{\approx}0.71$)---calendar-coincident sentiment does not explain linear variation beyond controls. LightGBM holdout AUC $\approx0.59$; split gain orders instrument and hour ahead of sentiment, but \texttt{fg\_lag1}/\texttt{fg0} remain in the top feature block. Extreme buckets: \textbf{long closes} show higher \emph{median} P\&L than \textbf{short closes} (huge $n$ makes formal $p$-values meaningless---report descriptively only). See Figure~\ref{fig:combo}.
+
+\begin{figure}[t]
+\centering
+\begin{minipage}[t]{0.48\textwidth}\centering
+\includegraphics[width=\linewidth,height=1.52in,keepaspectratio]{outputs/pnl_by_sentiment.png}\\[-0.15em]
+{\footnotesize (a) Median realized P\&L vs lagged bucket.}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}\centering
+\includegraphics[width=\linewidth,height=1.52in,keepaspectratio]{outputs/trader_archetypes.png}\\[-0.15em]
+{\footnotesize (b) Mixture axes: fearish vs greedish day means.}
+\end{minipage}
+\vspace{0.2em}
+\caption{Sentiment conditioning and exploratory trader clusters.}
+\label{fig:combo}
+\end{figure}
+
+\section*{Implications}
+Sentiment behaves as a \textbf{secondary, nonlinear} control: modest boosting gain, insignificant linear slope after clustering, and permutation-neutral $R^{2}$. Workflow takeaways: model with \textbf{lagged} public indices, analyze \textbf{realized} closes, and ship any rule only after fee-aware, instrument-specific out-of-sample tests.
+
+\medskip
+\noindent\textit{Build PDF:} \texttt{cd internship\_sentiment\_traders \&\& pdflatex report.tex} (run twice if cross-refs show ``??'').
+
+\end{document}
