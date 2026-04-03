@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-# Usage: place CSVs under data/, then:  python3 analysis.py
-
 import json
 import time
 import warnings
