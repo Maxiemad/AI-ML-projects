@@ -314,7 +314,6 @@ def lgbm_direction(X_tr, X_te, y_tr, y_te, feat_cols) -> dict:
         "baseline_predict_always_positive_accuracy": always_positive_acc,
         "metrics_prob_threshold_0_5": _binary_report(y_te_np, pred, 0.5),
     }
-
     best_t, best_f1_tr = 0.5, -1.0
     for t in np.linspace(0.05, 0.95, 91):
         f1tr = f1_score(y_tr, (pred_tr >= t).astype(int), zero_division=0)
